@@ -11,24 +11,36 @@
     - block:
         - name: Get clickhouse distrib
           ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
-            dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
+            url: "https://packages.clickhouse.com/deb/pool/stable/{{ item }}_{{ clickhouse_version }}_all.deb"
+            dest: "~/{{ item }}-{{ clickhouse_version }}.deb"
           with_items: "{{ clickhouse_packages }}"
       rescue:
         - name: Get clickhouse distrib
           ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.x86_64.rpm"
-            dest: "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
+            url: "https://packages.clickhouse.com/deb/pool/stable/clickhouse-common-static_{{ clickhouse_version }}_amd64.deb"
+            dest: "~/clickhouse-common-static-{{ clickhouse_version }}.deb"
     - name: Install clickhouse packages
       become: true
-      ansible.builtin.yum:
-        name:
-          - clickhouse-common-static-{{ clickhouse_version }}.rpm
-          - clickhouse-client-{{ clickhouse_version }}.rpm
-          - clickhouse-server-{{ clickhouse_version }}.rpm
+      apt:
+        deb: "{{ item }}"
+      with_items: "{{ Clickhousepackages }}"
       notify: Start clickhouse service
+    - name: Flush hendlers
+      ansible.builtin.meta: flush_handlers
     - name: Create database
       ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
       register: create_db
       failed_when: create_db.rc != 0 and create_db.rc !=82
       changed_when: create_db.rc == 0
+- name: Install Vector
+  hosts: clickhouse
+  tasks:
+    - name: Get Vector
+      ansible.builtin.get_url:
+        url: "https://packages.timber.io/vector/0.22.2/vector_0.22.2-1_amd64.deb"
+        dest: "~/vector_0.22.2-1_amd64.deb"
+    - name: Install Vector
+      become: true
+      apt:
+        deb: /home/vagrant/vector_0.22.2-1_amd64.deb
+
